@@ -3,7 +3,7 @@
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
 if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
-if(!require(sp)) install.packages("sp", repos = "http://cran.us.r-project.org")
+if(!require(sf)) install.packages("sf", repos = "http://cran.us.r-project.org")
 
 #downloading period of record (-por) vice year to date (-ytd) for UAE and Quatar 
 #downloading station list file
