@@ -1,13 +1,22 @@
-
+#load/install packages
 
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
 if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(sp)) install.packages("sp", repos = "http://cran.us.r-project.org")
 
-#downloading period of record (-por) vice year to date (-ytd)
-por <- tempfile()
-download.file("https://www1.ncdc.noaa.gov/pub/data/igra/derived/derived-por/AEM00041217-drvd.txt.zip", por)
-dat <- unzip(por, "AEM00041217-drvd.txt")
+#downloading period of record (-por) vice year to date (-ytd) for UAE and Quatar 
+#downloading station list file
+AE <- tempfile()
+download.file("https://www1.ncdc.noaa.gov/pub/data/igra/derived/derived-por/AEM00041217-drvd.txt.zip", AE)
+uaeDat <- unzip(AE, "AEM00041217-drvd.txt")
+
+QA <- tempfile()
+download.file("https://www1.ncdc.noaa.gov/pub/data/igra/derived/derived-por/QAM00041169-drvd.txt.zip", QA)
+quatarDat <- unzip(QA, "QAM00041169-drvd.txt")
+
+statList <- tempfile()
+download.file("https://www1.ncdc.noaa.gov/pub/data/igra/igra2-station-list.txt", statList)
 
 #function to parse out the headers
 v2_drvd_header_parser <- function(file, ...) {
@@ -90,6 +99,29 @@ is_header <- function(line0){
   substr(line0, 1, 1) == '#'
 }
 
+#function to parse station list
+stations_parser <- function(file, ...) {
+  readr::read_fwf(
+    file = file,
+    col_positions = readr::fwf_positions(
+      c(1,13,22,32,39,42,73,78,83),
+      c(11,20,30,37,40,71,76,81,88),
+      c("ID","LATITUDE","LONGITUDE","ELEVATION","STATE","NAME","FSTYEAR","LSTYEAR","NOBS")
+    ),
+    col_types = readr::cols(
+      ID = readr::col_character(),
+      LATITUDE = readr::col_number(),
+      LONGITUDE = readr::col_number(),
+      ELEVATION = readr::col_number(),
+      STATE = readr::col_character(),
+      NAME = readr::col_character(),
+      FSTYEAR = readr::col_integer(),
+      LSTYEAR = readr::col_integer(),
+      NOBS = readr::col_integer()
+    )
+  )
+}
+
 #function to parse everything into temp files
 parse_IGRA <- function(file, header_parser, data_parser) {
   # Parsing the file
@@ -119,10 +151,16 @@ parse_IGRA <- function(file, header_parser, data_parser) {
   dplyr::bind_cols(metadata, data0)
 }
 
-#call to implement functions above
-df <- parse_IGRA(dat, v2_drvd_header_parser, v2_drvd_data_parser)[, -1]
+#call to implement functions above on UAE and Quatar data and combine them
+UAE <- parse_IGRA(uaeDat, v2_drvd_header_parser, v2_drvd_data_parser)[, -1]
+QUATAR <- parse_IGRA(quatarDat, v2_drvd_header_parser, v2_drvd_data_parser)[, -1]
+df <- rbind(UAE, QUATAR)
+
+#call to parse station list
+stations <- stations_parser(statList)
 
 #cleaning up the environment
-rm(dat,por,is_header,parse_IGRA,v2_drvd_data_parser,v2_drvd_header_parser)
-file.remove("AEM00041217-drvd.txt")
+rm(uaeDat,quatarDat,AE,QA,is_header,parse_IGRA,v2_drvd_data_parser,
+   v2_drvd_header_parser, QUATAR, UAE, stations_parser, statList)
+file.remove("AEM00041217-drvd.txt","QAM00041169-drvd.txt")
 
