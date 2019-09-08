@@ -4,6 +4,10 @@ if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
 if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
 if(!require(sf)) install.packages("sf", repos = "http://cran.us.r-project.org")
+if(!require(rgeos)) install.packages("rgeos", repos = "http://cran.us.r-project.org")
+if(!require(rnaturalearth)) install.packages("rnaturalearth", repos = "http://cran.us.r-project.org")
+if(!require(rnaturalearthdata)) install.packages("rnaturalearthdata", repos = "http://cran.us.r-project.org")
+if(!require(ggspatial)) install.packages("ggspatial", repos = "http://cran.us.r-project.org")
 
 #downloading period of record (-por) vice year to date (-ytd) for UAE and Quatar 
 #downloading station list file
@@ -164,3 +168,47 @@ rm(uaeDat,quatarDat,AE,QA,is_header,parse_IGRA,v2_drvd_data_parser,
    v2_drvd_header_parser, QUATAR, UAE, stations_parser, statList)
 file.remove("AEM00041217-drvd.txt","QAM00041169-drvd.txt")
 
+
+#plot the stations on a world map
+plot_stations <- st_as_sf(stations %>% filter(LSTYEAR == 2019, ELEVATION != -998.8), coords = c("LONGITUDE","LATITUDE"), crs = 4326, agr = "constant")
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+currentStatNum <- stations %>% filter(LSTYEAR == 2019) %>% tally()
+
+ggplot(data = world) +
+  geom_sf() +
+  geom_sf(data = plot_stations, size = 1, shape = 23, fill = "darkred")+
+  ggtitle("Worldwide Radiosconde Launch Stations")
+
+#plot the stations on a regional mid-east map
+ggplot(data = world) +
+  geom_sf() +
+  geom_sf(data = plot_stations, size = 1, shape = 23, fill = "darkred")+
+  coord_sf(xlim = c(45, 65), ylim = c(18, 32), expand = FALSE) +
+  ggtitle("Radiosconde Launch Stations Around The UAE")
+
+
+#plot 2 stations with data from the same days
+df %>% group_by(DAY) %>%
+  filter(HOUR == 12 & DAY == 1) %>%
+  ggplot(aes(x = ((TEMP/10)-272.15), y= (CALCGPH))) +
+  geom_point(aes(col=MONTH)) +
+  facet_grid(ID ~ .)+
+  ylab("Altitude (meters)") +
+  xlab("Temperature (degrees of celcius)")
+
+#plot just the alt we want to predict
+df %>% group_by(DAY) %>%
+  filter(HOUR == 12 & DAY == 1, ID == "AEM00041217") %>%
+  ggplot(aes(x = ((TEMP/10)-272.15), y= (CALCGPH))) +
+  geom_point(aes(col=MONTH)) +
+  ylab("Altitude (meters)") +
+  xlab("Temperature (degrees of celcius)") +
+  ylim(900,1100) +
+  xlim(10,40)+
+  ggtitle("UAE Data for the 1st of Every Month Since 1984")
+
+#environment cleanup and get to the data we want
+new_df <- df %>% filter(ID == "AEM00041217" & CALCGPH > 900 & CALCGPH <1100)
+
+rm(currentStatNum, df, plot_stations, stations, world)
