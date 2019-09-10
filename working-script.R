@@ -212,3 +212,24 @@ df %>% group_by(DAY) %>%
 new_df <- df %>% filter(ID == "AEM00041217" & CALCGPH > 900 & CALCGPH <1100)
 
 rm(currentStatNum, df, plot_stations, stations, world)
+
+#Generate an RMSE function
+RMSE <- function(training_df, predicted_temperature){
+  sqrt(mean((training_df - predicted_temperature)^2))
+}
+
+#calculate the daily mu
+daily_mu <- training_df %>%
+  group_by(monthDay) %>%
+  summarize(mu = mean(TEMP)) %>%
+  mutate(mu = (mu/10)-272.15)
+
+#join the daily mu to the data frame
+training_df <- left_join(training_df, daily_mu)
+
+#calculate the RMSE on the training data
+RMSE(training_df$tempC, training_df$mu)
+
+#apply the mu to validation and calculate the RMSE on the validation data
+validation_df <- left_join(validation_df, daily_mu)
+RMSE(validation_df$tempC, validation_df$mu)
